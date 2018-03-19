@@ -1,0 +1,4 @@
+myhttpd
+bin/
+.*.sw*
+*.pem
