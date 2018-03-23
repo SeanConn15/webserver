@@ -4,13 +4,14 @@
  * to the client. 
  */
 
+#define MAXLENGTH 128
 #include <functional>
 #include <iostream>
 #include <sstream>
 #include <vector>
 #include <tuple>
-
 #include "server.hh"
+
 #include "http_messages.hh"
 #include "errors.hh"
 #include "misc.hh"
@@ -48,11 +49,60 @@ std::vector<Route_t> route_map = {
 };
 */
 
+void parse_request(const Socket_t& sock, HttpRequest* const request)
+{
+	
+  	//first get the string written from the socket
+
+	std::string buff = "";
+	char ch;
+	char lastc = 0;
+	while ( buff.length() < MAXLENGTH && ( ch = sock->getc() ) > 0 ) 
+	{
+    		if ( lastc == '\015' && ch == '\012' ) //if you reach the end of the message
+		{
+			printf("HELLO FREN\n");
+			buff = buff.substr(0, buff.length() - 1); //remove the trailing newline
+			break;
+		}
+		lastc = ch;
+		buff += ch;
+	}
+	//std::cout << buff << std::endl;	
+	
+	//now parse it and get all the component parts together
+	//<Method> <SP> <Request-URI> <SP> <HTTP-Version> <CRLF>	
+
+
+	//default is GET
+	request->method = "GET";
+
+	//forming uri
+	request->request_uri = "";
+	if (buff.length() < 4)
+	{
+		return;
+	}
+	int i = 4; //place after "GET "
+	while(buff[i] != ' ')
+	{
+		i++;	
+		if(i == buff.length())
+		{
+			return;
+		}
+	}
+	request->request_uri = buff.substr(4, i - 4);
+
+	//forming the HTTP-VERSION
+	request->http_version = buff.substr(i + 1, buff.length() - 1);
+
+}
 void Server::handle(const Socket_t& sock) const {
   HttpRequest request;
   // TODO: implement parsing HTTP requests
   // recommendation:
-  // void parse_request(const Socket_t& sock, HttpRequest* const request);
+  parse_request(sock, &request);
   request.print();
 
   HttpResponse resp;
@@ -61,3 +111,5 @@ void Server::handle(const Socket_t& sock) const {
   std::cout << resp.to_string() << std::endl;
   sock->write(resp.to_string());
 }
+
+

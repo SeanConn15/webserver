@@ -14,7 +14,6 @@ class Server {
     void run_thread_pool(const int num_threads) const;
     void run_thread() const;
 
-
     void handle(const Socket_t& sock) const;
 };
 
