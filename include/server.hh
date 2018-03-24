@@ -2,10 +2,13 @@
 #define INCLUDE_SERVER_HH_
 
 #include "socket.hh"
+#include "http_messages.hh"
 
 class Server {
  private:
     SocketAcceptor const& _acceptor;
+    std::string evaluate_request(std::string uri) const;
+    void parse_request(const Socket_t& sock, HttpRequest* const request) const;
 
  public:
     explicit Server(SocketAcceptor const& acceptor);
