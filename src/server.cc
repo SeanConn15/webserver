@@ -183,32 +183,69 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 		response->headers[name] = val;
 		return val;
 	}
-	if(uri[uri.length() - 1] == '/')
-	{
-		uri += "index.html";
-	}
 
 	//takes the string and searches for the corresponding file in http-root-dir/htdocs
 	std::string path = uri;
 	path = "/homes/connell7/cs252/lab5-src/http-root-dir/htdocs" + path;
 
-	//see what type of file is being refrenced
-	type = get_content_type(path);
 
-	if(type.find("directory") != std::string::npos) //if it is a directory
+	//see if the file exists and is is readable
+	if( access( path.c_str(), R_OK ) != -1 ) // file exists
+	{	
+    	
+		//see what type of file is being refrenced
+		type = get_content_type(path);
+
+		if(type.find("directory") != std::string::npos) //if it is a directory
+		{
+			//open the index.html for that directory
+			if(path[path.length() - 1] != '/')
+			{
+				path += "/index.html";
+			}
+			else
+			{
+				//TODO: browse directory
+				path += "index.html";
+			}
+			//now make sure it exists
+			if( access( path.c_str(), R_OK ) == -1 ) // index.html does not exist
+			{
+
+				//file not found, send a 404
+				response->status_code = 404;
+				type = "html/html";
+				response->headers[name] = val;
+				val = path + ": not found";
+				return val;
+
+			}
+		}
+		//now there is a file that was either passed directly, or turned into an index.html
+
+	} 
+	else 
 	{
-		//open the index.html for that directory
-		uri += "/index.html";
+		//directory/file not found, send a 404
+		response->status_code = 404;
+		type = "html/html";
+		response->headers[name] = val;
+		val = path + ": not found";
+		return val;
+
 	}
+
+
+	//now that we have confirmed the file exists, get it's type
 	type = get_content_type(path);
 	response->headers[name] = val;
 	
 
 
-	//checking the validity of the request
 	FILE* file = fopen(path.c_str(), "r");
 	if(file == NULL)
 	{
+		printf("this should not ever happen\n\n\n\n\n");
 		//file not found, send a 404
 		response->status_code = 404;
 		type = "text/text";
