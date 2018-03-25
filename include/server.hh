@@ -7,7 +7,7 @@
 class Server {
  private:
     SocketAcceptor const& _acceptor;
-    std::string evaluate_request(std::string uri) const;
+    std::string evaluate_request(HttpResponse* response, std::string uri) const;
     void parse_request(const Socket_t& sock, HttpRequest* const request) const;
 
  public:

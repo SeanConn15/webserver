@@ -11,11 +11,14 @@
 #include <vector>
 #include <tuple>
 #include "server.hh"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include "errors.hh"
 #include "misc.hh"
 #include "routes.hh"
-
+#include "unistd.h"
 Server::Server(SocketAcceptor const& acceptor) : _acceptor(acceptor) { }
 
 void Server::run_linear() const {
@@ -79,18 +82,12 @@ void Server::handle(const Socket_t& sock) const {
 	}
 
 	//generate the content to be returned
-
+	int fd = -1; //file requested, if -1 when called will do nothing.
 	if(valid)
 	{
-		if (request.request_uri.compare("/hello") == 0)
-			resp.message_body = "Hello CS252!";
-		else
-		{
-			//evaluate the request made in the uri
-			resp.message_body = evaluate_request(request.request_uri);
-		}
-
-
+		//evaluate the request made in the uri
+		//also sets content length
+		resp.message_body = evaluate_request(&resp, request.request_uri);
 
 		//insert additional information into the headers
 		std::string name;
@@ -100,19 +97,18 @@ void Server::handle(const Socket_t& sock) const {
 		val  = "close";
 		resp.headers[name] = val;
 
-		//content type
-		name = "Content-Type";
-		val  = "text/text";
-		resp.headers[name] = val;
 
-		//finding content length
-		name = "Content-Length";
-		val  = std::to_string(resp.message_body.length());
+		//content size	
+		name = "Content-Length";  //name and value for message size attribute
+		val  = std::to_string(resp.message_body.length()); //write whatever is message is
 		resp.headers[name] = val;
 	}	
 
+	//print out the respose and send it to the client.
 	std::cout << resp.to_string() << std::endl;
 	sock->write(resp.to_string());
+	
+	//now, if there is a file to be transmitted, do so
 }
 
 void Server::parse_request(const Socket_t& sock, HttpRequest* const request) const
@@ -173,7 +169,68 @@ void Server::parse_request(const Socket_t& sock, HttpRequest* const request) con
 	}
 
 }
-std::string Server::evaluate_request(std::string uri) const
+std::string Server::evaluate_request(HttpResponse* response, std::string uri) const
 {
+	//content type
+	std::string name = "Content-Type";
+	std::string type;
 
+	std::string val;
+	if (uri == "/hello")
+	{
+		val = "Hello CS252!";
+		type = "text/text";
+		response->headers[name] = val;
+		return val;
+	}
+	if(uri[uri.length() - 1] == '/')
+	{
+		uri += "index.html";
+	}
+
+	//takes the string and searches for the corresponding file in http-root-dir/htdocs
+	std::string path = uri;
+	path = "/homes/connell7/cs252/lab5-src/http-root-dir/htdocs" + path;
+
+	//see what type of file is being refrenced
+	type = get_content_type(path);
+
+	if(type.find("directory") != std::string::npos) //if it is a directory
+	{
+		//open the index.html for that directory
+		uri += "/index.html";
+	}
+	type = get_content_type(path);
+	response->headers[name] = val;
+	
+
+
+	//checking the validity of the request
+	FILE* file = fopen(path.c_str(), "r");
+	if(file == NULL)
+	{
+		//file not found, send a 404
+		response->status_code = 404;
+		type = "text/text";
+		response->headers[name] = val;
+		path = "no way hosaye";
+		val = "";
+		return val;
+	}
+	else
+	{
+		//TODO: do something that is not this
+
+		fseek(file, 0, SEEK_END);
+		size_t size = ftell(file);
+
+	      	char* where = new char[size];
+
+        	rewind(file);
+	    	fread(where, sizeof(char), size, file);
+		//write the file into the message string
+		val = where;
+		delete where;
+		return val;
+	}
 }
