@@ -57,6 +57,10 @@ void Server::run_fork() const {
 
 		if(fid == 0)	//child: accept the socket connection, exit
 		{
+			//disable the zombie killer for the child by setting it tothe default
+			za.sa_handler = SIG_DFL; //default 
+			sigemptyset(&za.sa_mask);//wipe old struct
+			sigaction(SIGCHLD, &za, NULL); //Register new sigaction
 			handle(sock);
 			exit(1);
 		}
@@ -75,7 +79,15 @@ void Server::run_thread() const {
 
 void Server::run_thread_pool(const int num_threads) const {
 	// TODO: Task 1.4
+	//creates a number of threads that run linearly
+
+	for(int i = 0; i < num_threads; i++)
+	{
+		std::thread (&Server::run_linear, this).detach();
+	}
+	run_linear();
 }
+
 
 // example route map. you could loop through these routes and find the first route which
 // matches the prefix and call the corresponding handler. You are free to implement
@@ -142,7 +154,7 @@ void Server::handle(const Socket_t& sock) const {
 	}	
 
 	//print out the respose and send it to the client.
-	std::cout << resp.to_string() << std::endl;
+	//std::cout << resp.to_string() << std::endl;
 	sock->write(resp.to_string());
 	
 }
@@ -301,7 +313,8 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 			(std::istreambuf_iterator<char>()));
 		//convert char vector into string
 		std::string s( buffer.begin(), buffer.end() );
-
+		//close the file
+		fclose(file);
 		return s; //return that string
 	}
 }
