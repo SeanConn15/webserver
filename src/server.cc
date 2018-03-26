@@ -8,17 +8,22 @@
 #include <functional>
 #include <iostream>
 #include <sstream>
+#include <fstream>
+#include <iterator>
 #include <vector>
 #include <tuple>
 #include "server.hh"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/wait.h>
+#include <thread>
 
 #include "errors.hh"
 #include "misc.hh"
 #include "routes.hh"
 #include "unistd.h"
+
 Server::Server(SocketAcceptor const& acceptor) : _acceptor(acceptor) { }
 
 void Server::run_linear() const {
@@ -27,13 +32,45 @@ void Server::run_linear() const {
 		handle(sock);
 	}
 }
-
+//kills zombie processes
+extern "C" void killZombie(int sig)
+{
+	while(waitpid(-1, NULL, WNOHANG) > 0);
+}
 void Server::run_fork() const {
 	// TODO: Task 1.4
+	
+	//set up a zombie killer for child processes
+	struct sigaction za;
+	za.sa_handler = killZombie;
+	sigemptyset(&za.sa_mask);
+	za.sa_flags = SA_RESTART;
+	if(sigaction(SIGCHLD, &za, NULL)){
+		perror("zombie catcher failed");
+		exit(2);
+	}
+
+	while(1)	//always
+	{
+		Socket_t sock = _acceptor.accept_connection(); //accept a new connection
+		int fid = fork();//spawn a child
+
+		if(fid == 0)	//child: accept the socket connection, exit
+		{
+			handle(sock);
+			exit(1);
+		}
+		//parent:look for an additional connection
+	}
 }
 
 void Server::run_thread() const {
 	// TODO: Task 1.4
+	while (1) {
+		Socket_t sock = _acceptor.accept_connection();
+		std::thread (&Server::handle, this, std::move(sock)).detach();
+		//handle(sock);
+	}
 }
 
 void Server::run_thread_pool(const int num_threads) const {
@@ -108,7 +145,6 @@ void Server::handle(const Socket_t& sock) const {
 	std::cout << resp.to_string() << std::endl;
 	sock->write(resp.to_string());
 	
-	//now, if there is a file to be transmitted, do so
 }
 
 void Server::parse_request(const Socket_t& sock, HttpRequest* const request) const
@@ -242,7 +278,7 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 	
 
 
-	FILE* file = fopen(path.c_str(), "r");
+	FILE* file = fopen(path.c_str(), "rb");
 	if(file == NULL)
 	{
 		printf("this should not ever happen\n\n\n\n\n");
@@ -257,17 +293,15 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 	else
 	{
 		//TODO: do something that is not this
+		std::ifstream input( path.c_str(), std::ios::binary ); //make file stream
 
-		fseek(file, 0, SEEK_END);
-		size_t size = ftell(file);
+	    	// copies all data into buffer
+		std::vector<char> buffer((
+			std::istreambuf_iterator<char>(input)), 
+			(std::istreambuf_iterator<char>()));
+		//convert char vector into string
+		std::string s( buffer.begin(), buffer.end() );
 
-	      	char* where = new char[size];
-
-        	rewind(file);
-	    	fread(where, sizeof(char), size, file);
-		//write the file into the message string
-		val = where;
-		delete where;
-		return val;
+		return s; //return that string
 	}
 }
