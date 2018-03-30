@@ -136,8 +136,19 @@ void Server::handle(const Socket_t& sock) const {
 	{
 		//evaluate the request made in the uri
 		//also sets content length
-		resp.message_body = evaluate_request(&resp, request.request_uri);
-
+		
+		
+		//calls the cgi-bin script and stops if a script was requested
+		if(request.request_uri.substr(0, 9).compare("/cgi-bin/") == 0)
+		{
+			std::string res = handle_cgi_bin(request);
+			sock->write(res);
+			return;
+		}
+		else
+		{
+			resp.message_body = evaluate_request(&resp, request.request_uri);
+		}
 		//insert additional information into the headers
 		std::string name;
 		std::string val;
@@ -224,6 +235,7 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 	std::string type;
 
 	std::string val;
+	//for first test
 	if (uri == "/hello")
 	{
 		val = "Hello CS252!";
@@ -231,6 +243,7 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 		response->headers[name] = val;
 		return val;
 	}
+
 
 	//takes the string and searches for the corresponding file in http-root-dir/htdocs
 	std::string path = uri;
