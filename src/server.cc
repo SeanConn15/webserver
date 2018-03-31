@@ -24,7 +24,11 @@
 #include "routes.hh"
 #include "unistd.h"
 
+
+
 Server::Server(SocketAcceptor const& acceptor) : _acceptor(acceptor) { }
+Log log;//class that holds all the log data, writes to its own file when write is called
+
 
 void Server::run_linear() const {
 	while (1) {
@@ -141,8 +145,7 @@ void Server::handle(const Socket_t& sock) const {
 		//calls the cgi-bin script and stops if a script was requested
 		if(request.request_uri.substr(0, 9).compare("/cgi-bin/") == 0)
 		{
-			std::string res = handle_cgi_bin(request);
-			sock->write(res);
+			handle_cgi_bin(request, sock);
 			return;
 		}
 		else
@@ -242,6 +245,10 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 		type = "text/text";
 		response->headers[name] = val;
 		return val;
+	}
+	if(uri == "/stats")
+	{
+		return log.generate_stats();
 	}
 
 

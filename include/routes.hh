@@ -6,10 +6,11 @@
 #include <utility>
 
 #include "http_messages.hh"
+#include "socket.hh"
 
 // You may find handling routes by using these functions (that you need to implement) helpful
 
-std::string handle_cgi_bin(const HttpRequest& request);
+void handle_cgi_bin(const HttpRequest& request, const Socket_t& sock);
 HttpResponse handle_htdocs(const HttpRequest& request);
 HttpResponse handle_default(const HttpRequest& request);
 
