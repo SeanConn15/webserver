@@ -70,7 +70,7 @@ void handle_cgi_bin(const HttpRequest& request,const Socket_t& sock ) {
 	bool library = false;
 	//if the scipt is just a regular script, just run it and put it's output through the pipe.
 	//if it ends in .so, dynamically load it and give it a direct connection to the client
-	if (exe.substr(exe.length() - 3, exe.length() - 1).compare(".so") == 0)
+	if (exe.length() > 3 && exe.substr(exe.length() - 3, exe.length() - 1).compare(".so") == 0)
 	{
 		library = true;	
 		void * lib = dlopen( "/homes/connell7/cs252/lab5-src/http-root-dir/cgi-bin/hello.so", 0 );

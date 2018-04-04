@@ -18,17 +18,21 @@
 #include <fcntl.h>
 #include <sys/wait.h>
 #include <thread>
+#include <sys/time.h>
+#include <dirent.h>
+#include <string.h>
 
 #include "errors.hh"
 #include "misc.hh"
 #include "routes.hh"
 #include "unistd.h"
 
-
+std::string ROOT_DIR = "/homes/connell7/cs252/lab5-src/http-root-dir/htdocs";
+//TODO: implement logging for tls as well as tcp
+//TODO: handle broken ssh connections (restart server)
 
 Server::Server(SocketAcceptor const& acceptor) : _acceptor(acceptor) { }
 Log log;//class that holds all the log data, writes to its own file when write is called
-
 
 void Server::run_linear() const {
 	while (1) {
@@ -93,18 +97,10 @@ void Server::run_thread_pool(const int num_threads) const {
 }
 
 
-// example route map. you could loop through these routes and find the first route which
-// matches the prefix and call the corresponding handler. You are free to implement
-// the different routes however you please
-/*
-std::vector<Route_t> route_map = {
-	std::make_pair("/cgi-bin", handle_cgi_bin),
-	std::make_pair("/", handle_htdocs),
-	std::make_pair("", handle_default)
-};
-*/
-
 void Server::handle(const Socket_t& sock) const {
+	struct timeval timecheck;
+	gettimeofday(&timecheck, NULL);
+	long starttime =(long) 1000000 * timecheck.tv_sec + timecheck.tv_usec;	
 	////get request and fill in the structure
 	HttpRequest request;
 	parse_request(sock, &request);
@@ -170,7 +166,14 @@ void Server::handle(const Socket_t& sock) const {
 	//print out the respose and send it to the client.
 	//std::cout << resp.to_string() << std::endl;
 	sock->write(resp.to_string());
+	gettimeofday(&timecheck, NULL);
+	log.addReqTime( (((long)1000000 * timecheck.tv_sec + timecheck.tv_usec ) - starttime)/100);
+	//for logging
+	std::stringstream entry;
+	entry << getenv("MYHTTPD_IP") << " " << request.request_uri << " "<< resp.status_code;
+	log.request_list.push_back(entry.str()); 
 	
+
 }
 
 void Server::parse_request(const Socket_t& sock, HttpRequest* const request) const
@@ -250,6 +253,10 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 	{
 		return log.generate_stats();
 	}
+	if(uri == "/logs")
+	{
+		return log.generate_logs();
+	}
 
 
 	//takes the string and searches for the corresponding file in http-root-dir/htdocs
@@ -269,11 +276,11 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 			//open the index.html for that directory
 			if(path[path.length() - 1] != '/')
 			{
-				path += "/index.html";
+				//TODO: browse directory
+				return directory_page(path); 	
 			}
 			else
 			{
-				//TODO: browse directory
 				path += "index.html";
 			}
 			//now make sure it exists
@@ -337,4 +344,60 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 		fclose(file);
 		return s; //return that string
 	}
+}
+
+std::string Server::directory_page(std::string path) const
+{
+	//html straight up copied from gun's ftp server
+	std::string dirname = path.substr(ROOT_DIR.length() , path.length() - ROOT_DIR.length());
+
+	//copying header information
+	std::string ret = "<!DOCTYPE html PUBLIC \"-//W3C//DTD HTML 3.2 Final//EN\"><html><link type=\"text/css\" id=\"dark-mode\" rel=\"stylesheet\" href=\"\"><style type=\"text/css\" id=\"dark-mode-custom-style\"></style><head><meta http-equiv=\"content-type\" content=\"text/html; charset=UTF-8\"><title>Index of ";
+	ret += dirname; 
+	ret += "</title></head>";
+	
+	//Table column names
+	ret += "<body><table><tbody><tr><th><a href=\"";
+	ret += dirname;
+	//TODO: make sorting work
+	ret += "\">Name</a></th><th><a href=\"https://ftp.gnu.org/gnu/?C=M;O=A\">Last modified</a></th><th><a href=\"https://ftp.gnu.org/gnu/?C=S;O=A\">Size</a></th><th><a href=\"https://ftp.gnu.org/gnu/?C=D;O=A\">Description</a></th></tr>";
+
+
+	//opening directory
+	
+	DIR * d = opendir(path.c_str());
+	if (NULL == d) {
+		perror("opendir: ");
+		exit(1);
+	}
+	//printing parent directory
+	
+	//printing links to files
+	for (dirent * ent = readdir(d); NULL != ent; ent = readdir(d)) {
+		if(strcmp(ent->d_name, ".") != 0)
+		{
+		//icon
+		ret += "<tr><td valign=\"top\"><img src=\"";
+		
+		if (ent->d_type == DT_DIR)
+		{
+			ret += "/folder.gif\" alt=\"[DIR]\"></td>";
+		}
+		else
+		{
+			ret += "/file.gif\" alt=\"[FILE]\"></td>";
+		}
+		
+		//name
+		ret += "<td><a href=\"";
+		ret+= dirname;
+		ret += "/";
+		ret += ent->d_name;
+		ret += "\">";
+		ret += ent->d_name;
+		ret += "/</a></td><td align=\"right\">2013-12-13 14:00  </td><td align=\"right\">  - </td><td>&nbsp;</td></tr>";
+		}
+	}
+	closedir(d);
+	return ret;
 }

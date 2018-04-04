@@ -17,15 +17,15 @@
 
 #include "errors.hh"
 #include "tcp.hh"
+char  inet_pres[INET_ADDRSTRLEN];
 
 TCPSocket::TCPSocket(int port_no, struct sockaddr_in addr) : _socket(port_no), _addr(addr) {
-    char inet_pres[INET_ADDRSTRLEN];
     // sin_family will be AF_INET
     if (inet_ntop(addr.sin_family, &(addr.sin_addr), inet_pres, INET_ADDRSTRLEN)) {
         std::cout << "Received a connection from " << inet_pres << std::endl;
     }
+    setenv("MYHTTPD_IP", inet_pres, 1);
 }
-
 TCPSocket::~TCPSocket() noexcept {
     std::cout << "Closing TCP socket fd " << _socket;
     char inet_pres[INET_ADDRSTRLEN];

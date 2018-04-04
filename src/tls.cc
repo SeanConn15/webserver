@@ -29,6 +29,7 @@ TLSSocket::TLSSocket(int port_no, struct sockaddr_in addr, SSL* ssl) :
     if (inet_ntop(addr.sin_family, &(addr.sin_addr), inet_pres, INET_ADDRSTRLEN)) {
         std::cout << "Received a connection from " << inet_pres << std::endl;
     }
+    setenv("MYHTTPD_IP", inet_pres, 1);
 }
 TLSSocket::~TLSSocket() noexcept {
 	// TODO: Task 2.1
