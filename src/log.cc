@@ -5,7 +5,7 @@
 void Log::write() {
 }
 
-void Log::addReqTime(long length) {
+void Log::addReqTime(time_t length) {
     if (length > max_request) {
         max_request = length;
     }
@@ -26,7 +26,7 @@ std::string Log::generate_stats() {
     stat << "Christopher Sean Connelly\n";
     stat << "Uptime (seconds): " << (time(NULL) - start_time) << "\n";
     stat << "Requests: " << request_list.size() << "\n";
-    stat << "Max request time (ms): " << max_request%100 << "\n";
+    stat << "Max request time (ms): " << max_request << "\n";
     stat << "Min request time (ms): " << min_request << "\n";
 
     return stat.str();
