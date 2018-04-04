@@ -14,16 +14,16 @@ INCDIR=$(ROOT)/include
 
 GCCFLAGS:=-Wall
 CPPFLAGS:=-iquote$(INCDIR)
-GCCFLAGS:=`pkg-config --cflags openssl` -g
+GCCFLAGS:=`pkg-config --cflags openssl` -g -pthread
 
-LDLIBS=`pkg-config --libs openssl`
-
+#LDLIBS=`pkg-config --libs openssl` -lpthread -lrt
+LDLIBS=`pkg-config --libs openssl` -lpthread -lrt -ldl -fPIC
 CFLAGS=$(CPPFLAGS) $(WARNFLAGS) $(GCCFLAGS) --std=gnu11
 CXXFLAGS=$(CPPFLAGS) $(WARNFLAGS) $(GCCFLAGS)  --std=gnu++14
 LDFLAGS=$(WARNFLAGS)
 
 LINTER=./cpplint.py
-LINTFLAGS:=--filter=-readability/todo,-legal/copyright --linelength=100 --headers=hh
+LINTFLAGS:=--filter=-readability/todo,-legal/copyright,-build/c++14,-build/c++11 --linelength=100 --headers=hh
 
 CSRC=$(foreach cext,$(CEXTS),$(call rwildcard, $(SRCDIR),*.$(cext), $1))
 COBJ=$(addprefix $(BINDIR)/,$(patsubst $(SRCDIR)/%,%.o,$(CSRC)))
@@ -50,6 +50,13 @@ clean:
 .PHONY: lint
 lint:
 	$(VV)$(LINTER) $(LINTFLAGS) $(ALLFILES)
+
+.PHONY: commit
+commit:
+	git checkout master
+	git add .
+	git commit -am "Commit"
+	git push origin master
 
 define c_rule
 $(BINDIR)/%.$1.o: $(SRCDIR)/%.$1

@@ -312,7 +312,6 @@ std::string Server::directory_page(std::string path) const {
       // html straight up copied from gun's ftp server
     std::string dirname = path.substr(ROOT_LEN , path.length() - ROOT_LEN);
 
-      // copying header information
     std::string ret = "<!DOCTYPE html PUBLIC \"-  // W3C// DTD HTML 3.2 Final// EN\">";
     ret += "<html><link type=\"text/css\" id=\"dark-mode\" rel=\"stylesheet\" href=\"\"";
     ret += "><style type=\"text/";
@@ -325,11 +324,10 @@ std::string Server::directory_page(std::string path) const {
       // Table column names
     ret += "<body><table><tbody><tr><th><a href=\"";
     ret += dirname;
-    ret += "\">Name</a></th><th><a href=\"https:  // ftp.gnu.org/gnu/?C=M;O=A\">";
-    ret += "Last modified</a></th><th><a href=\"https:  // ftp.gnu.org/gnu/?C=S;O=A\"";
-    ret += ">Size</a></th><th><a href=\"https:  // ftp.gnu.org/gnu/?C=D;O=A\">Descri";
+    ret += "\">Name</a></th><th><a href=\"https://ftp.gnu.org/gnu/?C=M;O=A\">";
+    ret += "Last modified</a></th><th><a href=\"https://ftp.gnu.org/gnu/?C=S;O=A\"";
+    ret += ">Size</a></th><th><a href=\"https://ftp.gnu.org/gnu/?C=D;O=A\">Descri";
     ret += "ption</a></th></tr>";
-
 
       // opening directory
 
