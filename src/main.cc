@@ -22,6 +22,14 @@ enum concurrency_mode {
     E_THREAD_POOL = 'p'
 };
 
+int verbosity = 1;
+// 1 is least verbose, 4 is most.
+
+// 1: new connections, closing connections
+// 2: page requests
+// 3: headers from/to client
+// 4: everything
+
 extern "C" void signal_handler(int signal) {
     exit(0);
 }
@@ -45,7 +53,21 @@ int main(int argc, char** argv) {
     int port_no = 0;
     int num_threads = 0;  // for use when running in pool of threads mode
 
-    char usage[] = "USAGE: myhttpd [-f|-t|-pNUM_THREADS] [-s] [-h] PORT_NO\n";
+    char usage[] = "USAGE: myhttpd [-f|-t|-pNUM_THREADS] [-vVERBOSTIY] [-s] [-h] PORT_NO \n";
+	char help[] = 	"This is a webserver than serves files in the directory http-root-dir/, and does some basic logging.\n\n"
+			"GENERAL OPTIONS:\n\n"
+			"-h:	display this help screen\n"
+			"-s:	use https to make connections\n"
+			"-v:	set the verbosity level of the output\n"
+			"	2: IP's of incoming connections and page requests\n"
+			"	3: headers sent to/gotten from the client\n"
+			"	4: Debug (everything)\n\n"
+			"CONCURENNCY MODES: (select only one)\n"
+			"-f	fork a new process for every new connection\n"
+			"-t	create a new thread for every connection\n"
+			"-p num	make a pool of threads for every connection, specifiying the number of threads in the pool\n"
+			"\n"
+			"PORT_NO	the port the server will accept conenctions from\n\n\n";
 
     if (argc == 1) {
         fputs(usage, stdout);
@@ -53,10 +75,10 @@ int main(int argc, char** argv) {
     }
 
     int c;
-    while ((c = getopt(argc, argv, "hftp:s")) != -1) {
+    while ((c = getopt(argc, argv, "ftp:v:sh")) != -1) {
         switch (c) {
             case 'h':
-                fputs(usage, stdout);
+                fputs(help, stdout);
                 return 0;
             case 'f':
             case 't':
@@ -74,12 +96,17 @@ int main(int argc, char** argv) {
             case 's':
                 use_https = 1;
                 break;
+	    case 'v':
+		std::cerr << verbosity << std::endl;
+		if (verbosity < 1 || verbosity > 4)
+			verbosity = 1;
+		break;
             case '?':
                 if (isprint(optopt)) {
                     std::cerr << "Unknown option: -" << static_cast<char>(optopt)
                               << std::endl;
                 } else {
-                    std::cerr << "Unknown option" << std::endl;
+                    std::cerr << "Unknown option " << optopt <<  std::endl;
                 }
                 // Fall through
             default:
@@ -120,6 +147,6 @@ int main(int argc, char** argv) {
     default:
         server.run_linear();
         break;
-    }
+   }
     delete acceptor;
 }

@@ -12,7 +12,7 @@ class Server {
     SocketAcceptor const& _acceptor;
     std::string evaluate_request(HttpResponse* response, std::string uri) const;
     void parse_request(const Socket_t& sock, HttpRequest* const request) const;
-    std::string directory_page(std::string path) const;
+    std::string directory_page(std::string path, std::string dirname) const;
 
  public:
     explicit Server(SocketAcceptor const& acceptor);

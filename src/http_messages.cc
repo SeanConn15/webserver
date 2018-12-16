@@ -59,10 +59,10 @@ void HttpRequest::print() const {
     // Magic string to help with autograder
     std::cout << "\\\\==////REQ\\\\\\\\==////" << std::endl;
 
-    std::cout << "Method: {" << method << "}" << std::endl;
-    std::cout << "Request URI: {" << request_uri << "}" << std::endl;
-    std::cout << "Query string: {" << query << "}" << std::endl;
-    std::cout << "HTTP Version: {" << http_version << "}" << std::endl;
+    std::cout << "Method: {" << method << "} ";
+    std::cout << "Request URI: {" << request_uri << "} ";
+    std::cout << "Query string: {" << query << "} "; 
+    std::cout << "HTTP Version: {" << http_version << "} ";
 
     std::cout << "Headers: " << std::endl;
     for (auto kvp=headers.begin(); kvp != headers.end(); kvp++) {

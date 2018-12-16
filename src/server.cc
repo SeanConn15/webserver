@@ -13,6 +13,7 @@
 #include <sys/time.h>
 #include <dirent.h>
 #include <string.h>
+#include <limits.h>
 
 #include <functional>
 #include <iostream>
@@ -29,8 +30,6 @@
 #include "routes.hh"
 #include "/usr/include/unistd.h"
 
-#define ROOT_DIR "/homes/connell7/cs252/lab5-src/http-root-dir/htdocs"
-#define ROOT_LEN 52
 
   // TODO: handle broken ssh connections (restart server)
 
@@ -112,7 +111,9 @@ void Server::handle(const Socket_t& sock) const {
     bool valid = false;   // defaults to invalid
       // check username and password combo
 
-    if (request.headers["Authorization"] != "Basic c2Vhbjp5ZXM=") {  // sean:yes in base 64
+    //password is diabled
+    if (0){//(request.headers["Authorization"] != "Basic c2Vhbjp5ZXM=") {  // sean:yes in base 64
+    
         resp.status_code = 401;
         std::string name = "WWW-Authenticate";
         std::string val  = "Basic realm=\"myhttpd-cs252\"";
@@ -238,7 +239,11 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 
       // takes the string and searches for the corresponding file in http-root-dir/htdocs
     std::string path = uri;
-    path = "/homes/connell7/cs252/lab5-src/http-root-dir/htdocs" + path;
+    //getting working directory
+    char cwd[PATH_MAX];
+    getcwd(cwd, sizeof(cwd));
+    path = cwd;
+    path += "/http-root-dir/htdocs" + uri;
 
 
       // see if the file exists and is is readable
@@ -249,7 +254,7 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
         if (type.find("directory") != std::string::npos) {    // if it is a directory
               // open the index.html for that directory
             if (path[path.length() - 1] == '/' && uri.length() != 1) {
-                return directory_page(path);
+                return directory_page(path, uri);
             } else {
                 if (uri.length() != 1)
                     path += '/';
@@ -308,9 +313,8 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
     }
 }
 
-std::string Server::directory_page(std::string path) const {
+std::string Server::directory_page(std::string path, std::string dirname) const {
       // html straight up copied from gun's ftp server
-    std::string dirname = path.substr(ROOT_LEN , path.length() - ROOT_LEN);
 
     std::string ret = "<!DOCTYPE html PUBLIC \"-  // W3C// DTD HTML 3.2 Final// EN\">";
     ret += "<html><link type=\"text/css\" id=\"dark-mode\" rel=\"stylesheet\" href=\"\"";
