@@ -15,7 +15,7 @@ class HttpRequest {
     std::string message_body;
     std::string query;  // implemented in Task 2.2
 
-    void print() const;
+    void print(int verbosity) const;
 };
 
 

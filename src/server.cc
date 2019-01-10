@@ -1,10 +1,3 @@
-  // Copyright 2018 why did we use a linter
-/**
- * This file contains the primary logic for your server. It is responsible for
- * handling socket communication - parsing HTTP requests and sending HTTP responses
- * to the client.
- */
-
 #define MAXLENGTH 128
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -30,54 +23,20 @@
 #include "routes.hh"
 #include "/usr/include/unistd.h"
 
-
   // TODO: handle broken ssh connections (restart server)
 
-Server::Server(SocketAcceptor const& acceptor) : _acceptor(acceptor) { }
-Log log;  // class that holds all the log data, writes to its own file when write is called
+Server::Server(SocketAcceptor const& acceptor, int ver) : _acceptor(acceptor) {verbosity =  ver;}
+Log loglist;  // class that holds all the loglist data, writes to its own file when write is called
 
-void Server::run_linear() const {
-    while (1) {
-        Socket_t sock = _acceptor.accept_connection();
-        handle(sock);
-    }
-}
-  // kills zombie processes
+// kills zombie processes
 extern "C" void killZombie(int sig) {
     while (waitpid(-1, NULL, WNOHANG) > 0) {
     }
 }
-void Server::run_fork() const {
-      // set up a zombie killer for child processes
-    struct sigaction za;
-    za.sa_handler = killZombie;
-    sigemptyset(&za.sa_mask);
-    za.sa_flags = SA_RESTART;
-    if (sigaction(SIGCHLD, &za, NULL)) {
-        perror("zombie catcher failed");
-        exit(2);
-    }
-
-    while (1) {     // always
-        Socket_t sock = _acceptor.accept_connection();   // accept a new connection
-        int fid = fork();  // spawn a child
-
-        if (fid == 0) {     // child: accept the socket connection, exit
-              // disable the zombie killer for the child by setting it tothe default
-            za.sa_handler = SIG_DFL;   // default
-            sigemptyset(&za.sa_mask);  // wipe old struct
-            sigaction(SIGCHLD, &za, NULL);   // Register new sigaction
-            handle(sock);
-            exit(1);
-        }
-          // parent:look for an additional connection
-    }
-}
-
-void Server::run_thread() const {
+void Server::run_linear() const {
     while (1) {
         Socket_t sock = _acceptor.accept_connection();
-        std::thread(&Server::handle, this, std::move(sock)).detach();
+        handle(sock);
     }
 }
 
@@ -92,14 +51,13 @@ void Server::run_thread_pool(const int num_threads) const {
 
 
 void Server::handle(const Socket_t& sock) const {
-    struct timeval timecheck;
-    gettimeofday(&timecheck, NULL);
-    time_t starttime =(time_t) 1000000 * timecheck.tv_sec + timecheck.tv_usec;
+    time_t starttime = time(NULL);
       // // get request and fill in the structure
     HttpRequest request;
-    parse_request(sock, &request);
+    if (parse_request(sock, &request) == 1)
+        return;
       // print out the struct
-    request.print();
+    request.print(verbosity);
 
 
 
@@ -129,21 +87,7 @@ void Server::handle(const Socket_t& sock) const {
           // evaluate the request made in the uri
           // also sets content length
 
-
-          // calls the cgi-bin script and stops if a script was requested
-        if (request.request_uri.substr(0, 9).compare("/cgi-bin/") == 0) {
-            handle_cgi_bin(request, sock);
-            gettimeofday(&timecheck, NULL);
-            time_t temp = ((time_t)1000000 * timecheck.tv_sec + timecheck.tv_usec);
-            log.addReqTime((temp - starttime)/100);
-              // for logging
-            std::stringstream entry;
-            entry << getenv("MYHTTPD_IP") << " " << request.request_uri << " "<< resp.status_code;
-            log.request_list.push_back(entry.str());
-            return;
-        } else {
-            resp.message_body = evaluate_request(&resp, request.request_uri);
-        }
+        resp.message_body = evaluate_request(&resp, request.request_uri);
           // insert additional information into the headers
         std::string name;
         std::string val;
@@ -162,23 +106,23 @@ void Server::handle(const Socket_t& sock) const {
       // print out the respose and send it to the client.
       // std::cout << resp.to_string() << std::endl;
     sock->write(resp.to_string());
-    gettimeofday(&timecheck, NULL);
-    log.addReqTime((((time_t)1000000 * timecheck.tv_sec + timecheck.tv_usec) - starttime)/100);
-      // for logging
+    loglist.addReqTime(time(NULL) - starttime);
+      // for loglistging
     std::stringstream entry;
     entry << getenv("MYHTTPD_IP") << " " << request.request_uri << " "<< resp.status_code;
-    log.request_list.push_back(entry.str());
+    loglist.request_list.push_back(entry.str());
 }
 
-void Server::parse_request(const Socket_t& sock, HttpRequest* const request) const {
+int Server::parse_request(const Socket_t& sock, HttpRequest* const request) const {
       // first get the string written from the socket
     std::vector<std::string> lines;
     std::string line = sock->readline();
-    while (line.compare("\r\n") != 0) {
+    while (line.compare("\r\n") != 0 && line.compare("") != 0) {
         lines.push_back(line.substr(0, line.length() - 2));      // remove /r/n and add to vector
         line = sock->readline();                  // read new line
     }
-
+    if (lines.size() == 0) //if you get an empty request, ignore it
+        return 1;
       // std::cout << buff << std::endl;
 
       // now parse it and get all the component parts together
@@ -190,13 +134,13 @@ void Server::parse_request(const Socket_t& sock, HttpRequest* const request) con
       // forming uri
     request->request_uri = "";
     if (lines[0].length() < 4) {
-        return;
+        return 0;
     }
     int i = 4;    // place after "GET "
     while (lines[0][i] != ' ') {
         i++;
         if (i == lines[0].length()) {
-            return;
+            return 0;
         }
     }
     request->request_uri = lines[0].substr(4, i - 4);
@@ -215,6 +159,7 @@ void Server::parse_request(const Socket_t& sock, HttpRequest* const request) con
           // std::cout << "'" << begin << "' '" << end << "'";
         request->headers[begin] = end;
     }
+    return 0;
 }
 std::string Server::evaluate_request(HttpResponse* response, std::string uri) const {
       // content type
@@ -223,6 +168,7 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
 
     std::string val;
       // for first test
+
     if (uri == "/hello") {
         val = "Hello CS252!";
         type = "text/text";
@@ -230,10 +176,10 @@ std::string Server::evaluate_request(HttpResponse* response, std::string uri) co
         return val;
     }
     if (uri == "/stats") {
-        return log.generate_stats();
+        return loglist.generate_stats();
     }
     if (uri == "/logs") {
-        return log.generate_logs();
+        return loglist.generate_logs();
     }
 
 

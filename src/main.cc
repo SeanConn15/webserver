@@ -15,12 +15,6 @@
 #include "tcp.hh"
 #include "tls.hh"
 
-enum concurrency_mode {
-    E_NO_CONCURRENCY = 0,
-    E_FORK_PER_REQUEST = 'f',
-    E_THREAD_PER_REQUEST = 't',
-    E_THREAD_POOL = 'p'
-};
 
 int verbosity = 1;
 // 1 is least verbose, 4 is most.
@@ -37,9 +31,9 @@ extern "C" void signal_handler(int signal) {
 int main(int argc, char** argv) {
 //    struct rlimit mem_limit = { .rlim_cur = 40960000, .rlim_max = 91280000 };
     struct rlimit cpu_limit = { .rlim_cur = 300, .rlim_max = 600 };
-  //  if (setrlimit(RLIMIT_AS, &mem_limit)) {
-    //    perror("Couldn't set memory limit\n");
-    //}
+//    if (setrlimit(RLIMIT_AS, &mem_limit)) {
+//        perror("Couldn't set memory limit\n");
+//    }
     if (setrlimit(RLIMIT_CPU, &cpu_limit)) {
         perror("Couldn't set CPU limit\n");
     }
@@ -48,24 +42,20 @@ int main(int argc, char** argv) {
     sa.sa_handler = signal_handler;
     sigemptyset(&sa.sa_mask);
     sigaction(SIGINT, &sa, NULL);
-    enum concurrency_mode mode = E_NO_CONCURRENCY;
     char use_https = 0;
     int port_no = 0;
     int num_threads = 0;  // for use when running in pool of threads mode
 
-    char usage[] = "USAGE: myhttpd [-f|-t|-pNUM_THREADS] [-vVERBOSTIY] [-s] [-h] PORT_NO \n";
+    char usage[] = "USAGE: myhttpd -pNUM_THREADS [-vVERBOSTIY] [-s] [-h] PORT_NO \n";
 	char help[] = 	"This is a webserver than serves files in the directory http-root-dir/, and does some basic logging.\n\n"
 			"GENERAL OPTIONS:\n\n"
 			"-h:	display this help screen\n"
 			"-s:	use https to make connections\n"
+			"-p <num>	make a pool of threads for every connection, specifiying the number of threads in the pool\n"
 			"-v:	set the verbosity level of the output\n"
 			"	2: IP's of incoming connections and page requests\n"
 			"	3: headers sent to/gotten from the client\n"
 			"	4: Debug (everything)\n\n"
-			"CONCURENNCY MODES: (select only one)\n"
-			"-f	fork a new process for every new connection\n"
-			"-t	create a new thread for every connection\n"
-			"-p num	make a pool of threads for every connection, specifiying the number of threads in the pool\n"
 			"\n"
 			"PORT_NO	the port the server will accept conenctions from\n\n\n";
 
@@ -75,32 +65,25 @@ int main(int argc, char** argv) {
     }
 
     int c;
-    while ((c = getopt(argc, argv, "ftp:v:sh")) != -1) {
+    while ((c = getopt(argc, argv, "p:v:sh")) != -1) {
         switch (c) {
             case 'h':
                 fputs(help, stdout);
                 return 0;
-            case 'f':
-            case 't':
             case 'p':
-                if (mode != E_NO_CONCURRENCY) {
-                    fputs("Multiple concurrency modes specified\n", stdout);
-                    fputs(usage, stderr);
-                    return -1;
-                }
-                mode = (enum concurrency_mode)c;
-                if (mode == E_THREAD_POOL) {
-                    num_threads = stoi(std::string(optarg));
-                }
+                num_threads = stoi(std::string(optarg));
                 break;
             case 's':
                 use_https = 1;
                 break;
 	    case 'v':
-		std::cerr << verbosity << std::endl;
+                verbosity = stoi(std::string(optarg));
 		if (verbosity < 1 || verbosity > 4)
-			verbosity = 1;
-		break;
+                {
+                    std::cerr << "verbosity must be between 1 and 4" << std::endl;
+                    return 1;
+		}
+                break;
             case '?':
                 if (isprint(optopt)) {
                     std::cerr << "Unknown option: -" << static_cast<char>(optopt)
@@ -125,28 +108,19 @@ int main(int argc, char** argv) {
     }
 
     port_no = atoi(argv[optind]);
-    printf("%d %d %d %d\n", mode, use_https, port_no, num_threads);
-
+    std::cout << "Running on port " << port_no << " with " << num_threads << " threads";
+    if(use_https)
+        std::cout << ", using https." << std::endl;
+    else
+        std::cout << ", using http." << std::endl;
+        
     SocketAcceptor* acceptor;
     if (use_https) {
         acceptor = new TLSSocketAcceptor(port_no);
     } else {
         acceptor = new TCPSocketAcceptor(port_no);
     }
-    Server server(*acceptor);
-    switch (mode) {
-    case E_FORK_PER_REQUEST:
-        server.run_fork();
-        break;
-    case E_THREAD_PER_REQUEST:
-        server.run_thread();
-        break;
-    case E_THREAD_POOL:
-        server.run_thread_pool(num_threads);
-        break;
-    default:
-        server.run_linear();
-        break;
-   }
+    Server server(*acceptor, verbosity);
+    server.run_thread_pool(num_threads);
     delete acceptor;
 }

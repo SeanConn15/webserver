@@ -10,16 +10,15 @@
 class Server {
  private:
     SocketAcceptor const& _acceptor;
+    int verbosity;
     std::string evaluate_request(HttpResponse* response, std::string uri) const;
-    void parse_request(const Socket_t& sock, HttpRequest* const request) const;
+    int parse_request(const Socket_t& sock, HttpRequest* const request) const;
     std::string directory_page(std::string path, std::string dirname) const;
 
  public:
-    explicit Server(SocketAcceptor const& acceptor);
+    explicit Server(SocketAcceptor const& acceptor, int _verbosity);
     void run_linear() const;
-    void run_fork() const;
     void run_thread_pool(const int num_threads) const;
-    void run_thread() const;
 
     void handle(const Socket_t& sock) const;
 };

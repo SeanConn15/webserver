@@ -55,10 +55,10 @@ std::string HttpResponse::to_string() const {
     return ss.str();
 }
 
-void HttpRequest::print() const {
+void HttpRequest::print(int verbosity) const {
     // Magic string to help with autograder
     std::cout << "\\\\==////REQ\\\\\\\\==////" << std::endl;
-
+    std::cout << verbosity << std::endl;
     std::cout << "Method: {" << method << "} ";
     std::cout << "Request URI: {" << request_uri << "} ";
     std::cout << "Query string: {" << query << "} "; 
