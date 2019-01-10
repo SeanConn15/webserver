@@ -123,15 +123,14 @@ int Server::parse_request(const Socket_t& sock, HttpRequest* const request) cons
     }
     if (lines.size() == 0) //if you get an empty request, ignore it
         return 1;
-      // std::cout << buff << std::endl;
 
-      // now parse it and get all the component parts together
-      // <Method> <SP> <Request-URI> <SP> <HTTP-Version> <CRLF>
+  // now parse it and get all the component parts together
+  // <Method> <SP> <Request-URI> <SP> <HTTP-Version> <CRLF>
 
 
     request->method = "GET";
 
-      // forming uri
+    // forming uri
     request->request_uri = "";
     if (lines[0].length() < 4) {
         return 0;

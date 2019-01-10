@@ -53,6 +53,7 @@ int main(int argc, char** argv) {
 			"-s:	use https to make connections\n"
 			"-p <num>	make a pool of threads for every connection, specifiying the number of threads in the pool\n"
 			"-v:	set the verbosity level of the output\n"
+			"	1: Default, only errror messages\n"
 			"	2: IP's of incoming connections and page requests\n"
 			"	3: headers sent to/gotten from the client\n"
 			"	4: Debug (everything)\n\n"
@@ -118,7 +119,7 @@ int main(int argc, char** argv) {
     if (use_https) {
         acceptor = new TLSSocketAcceptor(port_no);
     } else {
-        acceptor = new TCPSocketAcceptor(port_no);
+        acceptor = new TCPSocketAcceptor(port_no, verbosity);
     }
     Server server(*acceptor, verbosity);
     server.run_thread_pool(num_threads);

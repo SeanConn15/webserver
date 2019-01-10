@@ -18,22 +18,27 @@
 #include "errors.hh"
 #include "tcp.hh"
 char  inet_pres[INET_ADDRSTRLEN];
+int verb = 1;
 
 TCPSocket::TCPSocket(int port_no, struct sockaddr_in addr) : _socket(port_no), _addr(addr) {
     // sin_family will be AF_INET
     if (inet_ntop(addr.sin_family, &(addr.sin_addr), inet_pres, INET_ADDRSTRLEN)) {
-        std::cout << "Received a connection from " << inet_pres << std::endl;
+        if (verb > 1)
+            std::cout << "Received a connection from " << inet_pres << std::endl;
     }
     setenv("MYHTTPD_IP", inet_pres, 1);
 }
 TCPSocket::~TCPSocket() noexcept {
-    std::cout << "Closing TCP socket fd " << _socket;
+    if (verb > 1)
+        std::cout << "Closing TCP socket fd " << _socket;
     char inet_pres[INET_ADDRSTRLEN];
     // sin_family will be AF_INET
     if (inet_ntop(_addr.sin_family, &(_addr.sin_addr), inet_pres, INET_ADDRSTRLEN)) {
-        std::cout << " from " << inet_pres;
+        if (verb > 1)
+            std::cout << " from " << inet_pres;
     }
-    std::cout << std::endl;
+    if (verb > 1)
+        std::cout << std::endl;
     close(_socket);
 }
 
@@ -91,7 +96,8 @@ void TCPSocket::write(char const * const buf, const size_t buf_len) {
   }
 }
 
-TCPSocketAcceptor::TCPSocketAcceptor(const int portno) {
+TCPSocketAcceptor::TCPSocketAcceptor(const int portno, int _verbosity) {
+    verb = _verbosity;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(portno);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);

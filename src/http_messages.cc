@@ -57,21 +57,17 @@ std::string HttpResponse::to_string() const {
 
 void HttpRequest::print(int verbosity) const {
     // Magic string to help with autograder
-    std::cout << "\\\\==////REQ\\\\\\\\==////" << std::endl;
-    std::cout << verbosity << std::endl;
-    std::cout << "Method: {" << method << "} ";
-    std::cout << "Request URI: {" << request_uri << "} ";
-    std::cout << "Query string: {" << query << "} "; 
-    std::cout << "HTTP Version: {" << http_version << "} ";
-
-    std::cout << "Headers: " << std::endl;
-    for (auto kvp=headers.begin(); kvp != headers.end(); kvp++) {
-        std::cout << "field-name: " << kvp->first << "; field-value: " << kvp->second << std::endl;
+    if (verbosity >= 2)
+    {    
+        std::cout << "Method: {" << method << "} {" << request_uri << "} " << std::endl;
+        if (verbosity >= 3)
+        {
+            std::cout << "Headers: " << std::endl;
+            for (auto kvp=headers.begin(); kvp != headers.end(); kvp++) {
+                std::cout << "field-name: " << kvp->first << "; field-value: " << kvp->second << std::endl;
+            }
+            std::cout << "Message body length: " << message_body.length() << std::endl <<
+            message_body << std::endl;
+        }
     }
-
-    std::cout << "Message body length: " << message_body.length() << std::endl <<
-      message_body << std::endl;
-
-    // Magic string to help with autograder
-    std::cout << "//==\\\\\\\\REQ////==\\\\" << std::endl;
 }
