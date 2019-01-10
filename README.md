@@ -1,5 +1,5 @@
 ## webserver
-Modification of class project for personal use
+Modification of class project for personal use. 
 Spawns a webserver that can handle http connections for files in the http-root-dir/htdocs folder. Can display webpages and transfer files.
 ## Techinal details:
 - written in c++
